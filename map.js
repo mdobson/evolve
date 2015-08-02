@@ -7,8 +7,10 @@ Map.prototype.init = function(config) {
     .path('/map')
     .consumes('application/json')
     .produces('application/vnd.siren+json')
+    .produces('text/plain')
     .post('/{xy}', this.moveBot)
-    .get('/', this.show);
+    .get('/', this.show)
+    .get('/text', this.showText);
 }
 
 function generateResponse(bot, state, env) {
@@ -22,7 +24,7 @@ function generateResponse(bot, state, env) {
         href: env.helpers.url.path('/bot/' + bot.id)
       }
     ]  
-  }
+  };
 
   var actionField = [{
     name: 'botId',
@@ -82,7 +84,7 @@ function generateResponse(bot, state, env) {
 }
 
 Map.prototype.show = function(env, next) {
-  var self = this.
+  var self = this;
   var entity = {
     class: ['map'],
     entities: [],
@@ -111,6 +113,39 @@ Map.prototype.show = function(env, next) {
 
   env.response.statusCode = 200;
   env.response.body = entity;
+  next(env);
+};
+
+Map.prototype.showText = function(env, next) {
+  var self = this;
+  
+  env.response.setHeader('Content-Type', 'text/plain');
+  
+  var grid = [];
+  
+  self.state.map.ycoords.forEach(function(ycoord) {
+    var bots = self.state.bots.filter(function(bot) { return bot.y == ycoord });
+    var row = [];
+    self.state.map.xcoords.forEach(function(xcoord) {
+        var bot = bots.filter(function(bot) { return bot.x == xcoord })[0];
+        if(bot) {
+          row.push('B'); 
+        } else {
+          row.push('0');
+        }
+    });  
+    grid.push(row);
+  });
+
+  var gridString = '';
+  grid.forEach(function(row) {
+    row.push('\n');  
+    gridString += row.join('');
+  });  
+
+  env.response.statusCode = 200;
+  env.response.body = gridString;
+  next(env);
 };
 
 Map.prototype.moveBot = function(env, next) {
